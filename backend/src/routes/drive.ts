@@ -11,6 +11,7 @@ import {
   ERROR_MESSAGES,
   API_STATUS_CODE,
 } from '../utils/constants';
+import type { Trip } from '../types';
 
 const router = Router();
 
@@ -120,7 +121,8 @@ router.put(
 
     await driveService.setCredentials({ access_token: req.user.accessToken });
 
-    await driveService.updateTrip(fileId, trip);
+    // Cast to Trip type (after Zod validation, we know the structure is valid)
+    await driveService.updateTrip(fileId, trip as Trip);
     res.json({ fileId, trip });
   })
 );

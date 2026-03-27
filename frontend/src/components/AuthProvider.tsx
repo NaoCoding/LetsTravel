@@ -1,31 +1,22 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/auth';
-import type { AuthUser } from '@/store/auth';
+import { apiClient } from '@/lib/api';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { setUser, setTokens } = useAuthStore();
+  const { setUser, logout } = useAuthStore();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    // Restore auth state from localStorage
-    const token = localStorage.getItem('token');
-    const refreshToken = localStorage.getItem('refreshToken');
-    const userStr = localStorage.getItem('user');
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
 
-    if (token && userStr) {
-      try {
-        const user: AuthUser = JSON.parse(userStr);
-        setUser(user);
-        setTokens(token, refreshToken || undefined);
-      } catch (error) {
-        console.error('Failed to restore auth state:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-      }
-    }
-  }, [setUser, setTokens]);
+    // Verify auth state by checking if we have valid session cookies
+    // If httpOnly cookie is valid, the first authenticated request will work
+    // If invalid, it will trigger a 401 and redirect to login
+    // This approach relies on cookie-based auth rather than localStorage
+  }, [setUser, logout]);
 
   return <>{children}</>;
 }

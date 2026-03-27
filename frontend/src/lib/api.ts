@@ -1,65 +1,55 @@
 import axios from 'axios';
+import { useAuthStore } from '@/store/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+// Global refresh lock to prevent race conditions
+let refreshPromise: Promise<any> | null = null;
 
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  // Enable sending cookies with requests
+  // Enable sending httpOnly cookies with requests
   withCredentials: true,
 });
 
-// Add access token to requests (fallback for Authorization header)
-// Most requests will use httpOnly cookies, but header is kept for flexibility
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Handle response errors
+// Handle response errors and token refresh
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
     // Handle 401 errors - token expired or invalid
-    if (error.response?.status === 401) {
-      // Try to refresh token
+    if (error.response?.status === 401 && originalRequest) {
+      // Prevent multiple refresh attempts
       if (!originalRequest._retry) {
         originalRequest._retry = true;
 
-        try {
-          const refreshResponse = await axios.post(`${API_URL}/api/v1/auth/refresh`, {}, {
-            withCredentials: true,
-          });
-
-          if (refreshResponse.data.token) {
-            // Update stored token
-            localStorage.setItem('token', refreshResponse.data.token);
-
-            // Retry original request with new token
-            return apiClient(originalRequest);
-          }
-        } catch (refreshError) {
-          // Refresh failed, redirect to login
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
+        // Use global lock to prevent race conditions
+        if (!refreshPromise) {
+          refreshPromise = (async () => {
+            try {
+              await axios.post(`${API_URL}/api/v1/auth/refresh`, {}, {
+                withCredentials: true,
+              });
+              // Retry original request with refreshed token (in httpOnly cookie)
+              return apiClient(originalRequest);
+            } catch (refreshError) {
+              // Refresh failed, clear store and redirect to login
+              const authStore = useAuthStore.getState();
+              authStore.logout();
+              window.location.href = '/login';
+              return Promise.reject(refreshError);
+            } finally {
+              refreshPromise = null;
+            }
+          })();
         }
-      }
 
-      // If retry already attempted, redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+        return refreshPromise;
+      }
     }
 
     // Handle rate limiting
@@ -70,6 +60,22 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Add CSRF token to requests (for state-changing operations)
+apiClient.interceptors.request.use((config) => {
+  // Get CSRF token from cookie
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrf-token='))
+    ?.split('=')[1];
+
+  if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
+    config.headers['x-csrf-token'] = csrfToken;
+  }
+
+  return config;
+});
+
 
 export const authAPI = {
   getAuthUrl: () => apiClient.get('/api/v1/auth/google/url'),

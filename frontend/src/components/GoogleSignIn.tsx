@@ -35,17 +35,10 @@ export const GoogleSignIn = () => {
       // Send the token to backend for verification
       const result = await authAPI.exchangeCode(idToken);
 
-      if (result.data.token) {
-        // Store user info in store and localStorage
+      if (result.data.token && result.data.user) {
+        // Store user info in store only (httpOnly cookie is set by backend)
         setUser(result.data.user);
         setTokens(result.data.token, result.data.refreshToken);
-
-        // Store token in localStorage (httpOnly cookie is set by API)
-        localStorage.setItem('token', result.data.token);
-        if (result.data.refreshToken) {
-          localStorage.setItem('refreshToken', result.data.refreshToken);
-        }
-        localStorage.setItem('user', JSON.stringify(result.data.user));
 
         toast.success('Welcome! You have been signed in.');
         router.push('/dashboard');

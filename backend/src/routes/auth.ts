@@ -76,8 +76,14 @@ router.post(
     }
 
     const { code, credential } = validation.data;
-    let userInfo: any;
-    let tokens: any;
+    
+    interface UserInfo {
+      id: string;
+      email: string;
+      name?: string | null;
+    }
+    
+    let userInfo: UserInfo;
     let accessToken: string | undefined;
 
     if (credential) {
@@ -98,11 +104,9 @@ router.post(
         }
 
         userInfo = {
-          data: {
-            id: payload.sub,
-            email: payload.email,
-            name: payload.name,
-          },
+          id: payload.sub!,
+          email: payload.email!,
+          name: payload.name,
         };
       } catch (err) {
         throw new AppError(
@@ -123,12 +127,18 @@ router.post(
         }
 
         oauth2Client.setCredentials(codeTokens);
-        tokens = codeTokens;
         accessToken = codeTokens.access_token;
 
         // Get user info
         const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-        userInfo = await oauth2.userinfo.get();
+        const userInfoResponse = await oauth2.userinfo.get();
+        
+        const data = userInfoResponse.data;
+        userInfo = {
+          id: data.id!,
+          email: data.email!,
+          name: data.name,
+        };
       } catch (err) {
         throw new AppError(
           API_STATUS_CODE.INTERNAL_SERVER_ERROR,
@@ -145,8 +155,8 @@ router.post(
     // Create JWT tokens
     const jwtToken = jwt.sign(
       {
-        id: userInfo.data.id,
-        email: userInfo.data.email,
+        id: userInfo.id,
+        email: userInfo.email,
         accessToken: accessToken || undefined,
       },
       env.JWT_SECRET,
@@ -155,18 +165,15 @@ router.post(
       } as any
     );
 
-    // Create refresh token if available (and set REFRESH_TOKEN_SECRET)
-    let refreshToken: string | undefined;
-    if (env.REFRESH_TOKEN_SECRET) {
-      refreshToken = jwt.sign(
-        {
-          id: userInfo.data.id,
-          email: userInfo.data.email,
-        },
-        env.REFRESH_TOKEN_SECRET,
-        { expiresIn: '30d' }
-      );
-    }
+    // Create refresh token with separate secret
+    const refreshToken = jwt.sign(
+      {
+        id: userInfo.id,
+        email: userInfo.email,
+      },
+      env.REFRESH_TOKEN_SECRET,
+      { expiresIn: '30d' }
+    );
 
     // Set secure httpOnly cookies
     setAuthCookies(res, jwtToken, refreshToken);
@@ -174,11 +181,11 @@ router.post(
     res.json({
       token: jwtToken,
       user: {
-        id: userInfo.data.id,
-        email: userInfo.data.email,
-        name: userInfo.data.name,
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
       },
-      refreshToken: refreshToken || tokens?.refresh_token || undefined,
+      refreshToken: refreshToken,
     });
   })
 );
@@ -202,8 +209,7 @@ router.post(
     }
 
     try {
-      const secret = env.REFRESH_TOKEN_SECRET || env.JWT_SECRET;
-      const decoded = jwt.verify(refreshTokenValue, secret) as any;
+      const decoded = jwt.verify(refreshTokenValue, env.REFRESH_TOKEN_SECRET) as any;
 
       // Create new JWT token
       const newJwtToken = jwt.sign(
@@ -217,7 +223,17 @@ router.post(
         } as any
       );
 
-      setAuthCookies(res, newJwtToken, refreshTokenValue);
+      // Create new refresh token (rotate refresh tokens)
+      const newRefreshToken = jwt.sign(
+        {
+          id: decoded.id,
+          email: decoded.email,
+        },
+        env.REFRESH_TOKEN_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      setAuthCookies(res, newJwtToken, newRefreshToken);
 
       res.json({
         token: newJwtToken,
@@ -225,6 +241,7 @@ router.post(
           id: decoded.id,
           email: decoded.email,
         },
+        refreshToken: newRefreshToken,
       });
     } catch (err) {
       throw new AppError(

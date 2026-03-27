@@ -12,7 +12,7 @@ const EnvSchema = z.object({
   GOOGLE_REDIRECT_URI: z.string().url('Invalid GOOGLE_REDIRECT_URI'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('7d'),
-  REFRESH_TOKEN_SECRET: z.string().min(32, 'REFRESH_TOKEN_SECRET must be at least 32 characters').optional(),
+  REFRESH_TOKEN_SECRET: z.string().min(32, 'REFRESH_TOKEN_SECRET must be at least 32 characters'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
