@@ -116,7 +116,10 @@ router.post(
         throw new AppError(
           API_STATUS_CODE.BAD_REQUEST,
           ERROR_MESSAGES.INVALID_GOOGLE_TOKEN
-        ); - this provides both ID and access tokens
+        );
+      }
+    } else if (code) {
+      // Handle authorization code - this provides both ID and access tokens
       try {
         const { tokens: codeTokens } = await oauth2Client.getToken(code);
 
@@ -129,7 +132,7 @@ router.post(
 
         oauth2Client.setCredentials(codeTokens);
         accessToken = codeTokens.access_token;
-        refreshTokenValue = codeTokens.refresh_token;
+        refreshTokenValue = codeTokens.refresh_token ?? undefined;
 
         // Get user info
         const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
@@ -172,10 +175,7 @@ router.post(
       {
         id: userInfo.id,
         email: userInfo.email,
-        googleRefreshToken: refreshTokenValue || undefinedsign(
-      {
-        id: userInfo.id,
-        email: userInfo.email,
+        googleRefreshToken: refreshTokenValue,
       },
       env.REFRESH_TOKEN_SECRET,
       { expiresIn: '30d' }

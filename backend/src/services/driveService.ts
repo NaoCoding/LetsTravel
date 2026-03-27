@@ -165,15 +165,16 @@ export class GoogleDriveService {
 
   async getTrips(
     pageSize: number = 10,
-    pa// Get the LetsTravel Trips folder
+    pageToken?: string
+  ): Promise<{ trips: Trip[]; nextPageToken?: string }> {
+    try {
+      // Get the LetsTravel Trips folder
       const folderId = await this.getOrCreateTripsFolder();
 
       const res = await retryWithBackoff(async () => {
         return await this.drive.files.list({
-          q: `'${folderId}' in parents and trashed=false`
-      const res = await retryWithBackoff(async () => {
-        return await this.drive.files.list({
-          spaces: 'appDataFolder',
+          q: `'${folderId}' in parents and trashed=false`,
+          spaces: 'drive',
           fields: 'files(id, name, createdTime, modifiedTime), nextPageToken',
           pageSize: Math.min(pageSize, 100), // Cap at 100 to respect Google Drive API limits
           pageToken,
