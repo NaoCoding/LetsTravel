@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslation } from 'i18next/react';
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsPage() {
   const { t } = useTranslation('common');

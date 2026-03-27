@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import i18n from 'i18next';
-import { initReactI18next } from 'i18next/react';
+import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import en from '@/public/locales/en/common.json';
-import zhTW from '@/public/locales/zh-TW/common.json';
+import en from '@/locales/en/common.json';
+import zhTW from '@/locales/zh-TW/common.json';
 
 // Initialize i18next
 if (!i18n.isInitialized) {

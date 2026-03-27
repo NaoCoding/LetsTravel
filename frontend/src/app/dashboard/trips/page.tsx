@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useTranslation } from 'i18next/react';
+import { useTranslation } from 'react-i18next';
 import { driveAPI } from '@/lib/api';
 
 interface Trip {

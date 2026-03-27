@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslation } from 'i18next/react';
+import { useTranslation } from 'react-i18next';
 import { useI18n } from '@/lib/i18n';
 import { Globe } from 'lucide-react';
 import { useState } from 'react';

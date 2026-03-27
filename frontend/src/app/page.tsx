@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plane } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useTranslation } from 'i18next/react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth';
 import { authAPI } from '@/lib/api';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';

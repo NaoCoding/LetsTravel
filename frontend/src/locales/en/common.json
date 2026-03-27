@@ -1,0 +1,96 @@
+{
+  "common": {
+    "appName": "LetsTravel",
+    "tagline": "Trip Planning Made Easy",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "signInWith": "Sign in with Google",
+    "browseAsGuest": "Browse as Guest",
+    "backToHome": "Back to Home",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "bySigningIn": "By signing in, you agree to our",
+    "and": "and",
+    "signInWithGoogle": "Sign in with your Google account to get started",
+    "welcome": "Welcome",
+    "dashboard": "Dashboard",
+    "getStarted": "Get Started",
+    "goToDashboard": "Go to Dashboard",
+    "startPlanning": "Start Planning"
+  },
+  "home": {
+    "welcome": "Welcome to LetsTravel",
+    "welcomeMessage": "Plan your trips with flight tracking, hotel bookings, and more",
+    "youHaveBeenSignedOut": "You have been signed out.",
+    "errorSigningOut": "Error signing out. Please try again.",
+    "pageTitle": "Plan Your Perfect Trip",
+    "pageSubtitle": "Track flights, manage bookings, and share itineraries with your travel companions",
+    "flightTracking": "Flight Tracking",
+    "flightTrackingDesc": "Monitor flight numbers, times, and status in real-time",
+    "tripOrganization": "Trip Organization",
+    "tripOrganizationDesc": "Keep all your trip details in one place with cloud sync",
+    "googleDriveStorage": "Google Drive Storage",
+    "googleDriveStorageDesc": "Your data stays with you in your Google Drive"
+  },
+  "login": {
+    "title": "Sign In to LetsTravel",
+    "subtitle": "Sign in with your Google account to get started",
+    "googleSignInFailed": "Failed to sign in. Please try again.",
+    "welcomeMessage": "Welcome! You have been signed in.",
+    "signingIn": "Signing in..."
+  },
+  "dashboard": {
+    "welcome": "Welcome to LetsTravel",
+    "comingSoon": "Dashboard content coming soon...",
+    "navigation": "Navigation"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "myTrips": "My Trips",
+    "flights": "Flights",
+    "bookings": "Bookings",
+    "settings": "Settings",
+    "signedInAs": "Signed in as"
+  },
+  "bookings": {
+    "title": "Bookings",
+    "subtitle": "Manage your hotel, Airbnb, and activity bookings"
+  },
+  "flights": {
+    "title": "Flight Tracking",
+    "subtitle": "Track your flights here"
+  },
+  "trips": {
+    "title": "My Trips",
+    "subtitle": "View and manage your upcoming trips",
+    "tripsPerPage": "Trips per page:",
+    "loading": "Loading trips...",
+    "noTrips": "No trips yet. Create your first trip!",
+    "untitledTrip": "Untitled Trip",
+    "created": "Created:",
+    "modified": "Modified:",
+    "view": "View",
+    "edit": "Edit",
+    "previous": "Previous",
+    "next": "Next",
+    "showing": "Showing {{count}} trip",
+    "showing_plural": "Showing {{count}} trips",
+    "failedToLoadTrips": "Failed to load trips. Please try again."
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account settings",
+    "accountSettings": "Account Settings",
+    "managePreferences": "Manage your account preferences"
+  },
+  "errors": {
+    "googleSignInFailed": "Google Sign-In service failed to load. Please refresh the page.",
+    "failedToInitializeGoogle": "Failed to initialize Google Sign-In"
+  },
+  "language": {
+    "selectLanguage": "Select Language",
+    "english": "English",
+    "traditionalChinese": "繁體中文",
+    "changeLanguage": "Change Language"
+  }
+}

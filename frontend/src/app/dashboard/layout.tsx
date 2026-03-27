@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { LogOut, LogIn } from 'lucide-react';
-import { useTranslation } from 'i18next/react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';

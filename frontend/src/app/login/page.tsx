@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plane } from 'lucide-react';
-import { useTranslation } from 'i18next/react';
+import { useTranslation } from 'react-i18next';
 import { GoogleSignIn } from '@/components/GoogleSignIn';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuthStore } from '@/store/auth';

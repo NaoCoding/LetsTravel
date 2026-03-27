@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { useTranslation } from 'i18next/react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth';
 import { authAPI } from '@/lib/api';
 
