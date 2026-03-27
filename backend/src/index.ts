@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { env, validateEnv } from './config/env';
 import authRoutes from './routes/auth';
 import driveRoutes from './routes/drive';
@@ -27,15 +28,33 @@ if (env.NODE_ENV === 'production' && !env.FRONTEND_URL.startsWith('https://')) {
   console.warn('Warning: FRONTEND_URL should use https:// in production');
 }
 
-// Middleware
+// Security middleware
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", 'accounts.google.com'],
+    frameSrc: ['accounts.google.com'],
+    connectSrc: ["'self'", 'accounts.google.com'],
+  },
+}));
+app.use(helmet.frameguard({ action: 'deny' }));
+app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }));
+
+// CORS configuration
+const corsOrigins = env.ALLOWED_ORIGINS && env.ALLOWED_ORIGINS.length > 0
+  ? env.ALLOWED_ORIGINS
+  : (env.NODE_ENV === 'production'
+    ? env.FRONTEND_URL
+    : ['http://localhost:3000', 'http://localhost:3001']);
+
 app.use(
   cors({
-    origin:
-      env.NODE_ENV === 'production'
-        ? env.FRONTEND_URL
-        : 'http://localhost:3000', // Only allow localhost:3000 in development
+    origin: corsOrigins,
     credentials: true,
     optionsSuccessStatus: 200,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-csrf-token', 'Authorization'],
   })
 );
 

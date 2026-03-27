@@ -2,6 +2,8 @@ import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { AppError } from '../middleware/errorHandler';
 import { API_STATUS_CODE } from '../utils/constants';
+import { logger } from '../utils/logger';
+import { FILE_SIZE_LIMITS } from '../config/env';
 import type { Trip } from '../types';
 
 // Helper for exponential backoff retry
@@ -42,6 +44,18 @@ export class GoogleDriveService {
 
   async saveTrip(tripData: Trip, fileName: string): Promise<string> {
     try {
+      // Validate file size before sending to Google Drive
+      const fileContent = JSON.stringify(tripData);
+      const fileSizeBytes = Buffer.byteLength(fileContent, 'utf8');
+      
+      if (fileSizeBytes > FILE_SIZE_LIMITS.MAX_TRIP_FILE_SIZE) {
+        const sizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+        throw new AppError(
+          API_STATUS_CODE.BAD_REQUEST,
+          `Trip file size (${sizeMB}MB) exceeds maximum allowed size (10MB)`
+        );
+      }
+
       const fileMetadata = {
         name: fileName,
         mimeType: 'application/json',
@@ -50,7 +64,7 @@ export class GoogleDriveService {
 
       const media = {
         mimeType: 'application/json',
-        body: JSON.stringify(tripData),
+        body: fileContent,
       };
 
       const file = await retryWithBackoff(async () => {
@@ -70,7 +84,7 @@ export class GoogleDriveService {
 
       return file.data.id;
     } catch (err: any) {
-      console.error('Error saving trip to Drive:', err);
+      logger.error('Error saving trip to Drive', err);
       
       if (err instanceof AppError) {
         throw err;
@@ -90,19 +104,27 @@ export class GoogleDriveService {
     }
   }
 
-  async getTrips(): Promise<Trip[]> {
+  async getTrips(
+    pageSize: number = 10,
+    pageToken?: string
+  ): Promise<{ trips: Trip[]; nextPageToken?: string | null }> {
     try {
       const res = await retryWithBackoff(async () => {
         return await this.drive.files.list({
           spaces: 'appDataFolder',
-          fields: 'files(id, name, createdTime, modifiedTime)',
-          pageSize: 100,
+          fields: 'files(id, name, createdTime, modifiedTime), nextPageToken',
+          pageSize: Math.min(pageSize, 100), // Cap at 100 to respect Google Drive API limits
+          pageToken,
+          orderBy: 'modifiedTime desc',
         });
       });
 
-      return (res.data.files || []) as Trip[];
+      return {
+        trips: (res.data.files || []) as Trip[],
+        nextPageToken: res.data.nextPageToken || undefined,
+      };
     } catch (err: any) {
-      console.error('Error fetching trips from Drive:', err);
+      logger.error('Error fetching trips from Drive', err);
       
       if (err instanceof AppError) {
         throw err;
@@ -126,7 +148,7 @@ export class GoogleDriveService {
 
       return file.data as Trip;
     } catch (err: any) {
-      console.error('Error fetching trip from Drive:', err);
+      logger.error('Error fetching trip from Drive', err);
       
       if (err instanceof AppError) {
         throw err;
@@ -148,9 +170,21 @@ export class GoogleDriveService {
 
   async updateTrip(fileId: string, tripData: Trip): Promise<void> {
     try {
+      const fileContent = JSON.stringify(tripData);
+      const fileSizeBytes = Buffer.byteLength(fileContent, 'utf8');
+      
+      // Validate file size
+      if (fileSizeBytes > FILE_SIZE_LIMITS.MAX_TRIP_FILE_SIZE) {
+        const sizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+        throw new AppError(
+          API_STATUS_CODE.BAD_REQUEST,
+          `Trip file size (${sizeMB}MB) exceeds maximum allowed size (10MB)`
+        );
+      }
+
       const media = {
         mimeType: 'application/json',
-        body: JSON.stringify(tripData),
+        body: fileContent,
       };
 
       await retryWithBackoff(async () => {
@@ -160,7 +194,7 @@ export class GoogleDriveService {
         });
       });
     } catch (err: any) {
-      console.error('Error updating trip in Drive:', err);
+      logger.error('Error updating trip in Drive', err);
       
       if (err instanceof AppError) {
         throw err;
@@ -188,7 +222,7 @@ export class GoogleDriveService {
         });
       });
     } catch (err: any) {
-      console.error('Error deleting trip from Drive:', err);
+      logger.error('Error deleting trip from Drive', err);
       
       if (err instanceof AppError) {
         throw err;

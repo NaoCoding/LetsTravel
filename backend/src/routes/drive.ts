@@ -67,7 +67,7 @@ router.post(
   })
 );
 
-// Get all trips from Google Drive
+// Get all trips from Google Drive with pagination
 router.get(
   '/trips',
   asyncHandler(async (req: Request, res: Response) => {
@@ -81,8 +81,18 @@ router.get(
     // Create service instance for this user
     const driveService = createUserDriveService(req.user.accessToken);
 
-    const files = await driveService.getTrips();
-    res.json({ trips: files });
+    // Extract pagination parameters from query
+    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 100);
+    const pageToken = req.query.pageToken as string | undefined;
+
+    const { trips, nextPageToken } = await driveService.getTrips(pageSize, pageToken);
+    res.json({ 
+      trips, 
+      pagination: {
+        pageSize,
+        nextPageToken: nextPageToken || null,
+      }
+    });
   })
 );
 

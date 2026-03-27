@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth';
@@ -10,25 +10,52 @@ export const GoogleSignIn = () => {
   const divRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { setUser } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleSDKReady, setIsGoogleSDKReady] = useState(false);
+  const [sdkError, setSdkError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize Google Sign-In
-    if (window.google && divRef.current) {
-      window.google.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-        callback: handleCredentialResponse,
-      });
+    // Check if Google SDK is loaded
+    const checkGoogleSDK = () => {
+      if (window.google && divRef.current) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+            callback: handleCredentialResponse,
+          });
 
-      window.google.accounts.id.renderButton(divRef.current, {
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-      });
-    }
+          window.google.accounts.id.renderButton(divRef.current, {
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+          });
+          
+          setIsGoogleSDKReady(true);
+        } catch (err) {
+          setSdkError('Failed to initialize Google Sign-In');
+          console.error('Google SDK initialization error:', err);
+        }
+      } else if (!window.google) {
+        // SDK not loaded yet, retry
+        setTimeout(checkGoogleSDK, 500);
+      }
+    };
+
+    // Set a timeout for SDK loading failure
+    const sdkLoadTimeout = setTimeout(() => {
+      if (!isGoogleSDKReady && !window.google) {
+        setSdkError('Google Sign-In service failed to load. Please refresh the page.');
+      }
+    }, 5000);
+
+    checkGoogleSDK();
+
+    return () => clearTimeout(sdkLoadTimeout);
   }, []);
 
   const handleCredentialResponse = async (response: CredentialResponse) => {
     try {
+      setIsLoading(true);
       // Extract the ID token from Google Sign-In response
       const idToken = response.credential;
 
@@ -47,9 +74,41 @@ export const GoogleSignIn = () => {
       const errorMessage =
         error.response?.data?.error || 'Failed to sign in. Please try again.';
       toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center my-6">
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+          <span className="text-gray-600">Signing in...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (sdkError) {
+    return (
+      <div className="flex justify-center my-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700 text-sm">{sdkError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show button when SDK is ready
   return <div ref={divRef} className="flex justify-center my-6" />;
 };
 

@@ -13,6 +13,8 @@ export const apiClient = axios.create({
   },
   // Enable sending httpOnly cookies with requests
   withCredentials: true,
+  // Add timeout configuration (10 seconds)
+  timeout: 10000,
 });
 
 // Handle response errors and token refresh
@@ -54,7 +56,9 @@ apiClient.interceptors.response.use(
 
     // Handle rate limiting
     if (error.response?.status === 429) {
-      console.error('Rate limited. Please try again later.');
+      const retryAfter = error.response.headers['retry-after'];
+      const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000;
+      console.warn(`Rate limited. Please retry after ${waitTime}ms`);
     }
 
     return Promise.reject(error);
@@ -87,7 +91,13 @@ export const authAPI = {
 
 export const driveAPI = {
   saveTrip: (trip: any) => apiClient.post('/api/v1/drive/trips', { trip }),
-  getTrips: () => apiClient.get('/api/v1/drive/trips'),
+  getTrips: (pageSize: number = 10, pageToken?: string) => 
+    apiClient.get('/api/v1/drive/trips', {
+      params: {
+        ...(pageSize && { pageSize }),
+        ...(pageToken && { pageToken }),
+      }
+    }),
   getTrip: (fileId: string) => apiClient.get(`/api/v1/drive/trips/${fileId}`),
   updateTrip: (fileId: string, trip: any) =>
     apiClient.put(`/api/v1/drive/trips/${fileId}`, { trip }),
