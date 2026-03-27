@@ -3,7 +3,9 @@ import { useAuthStore } from '@/store/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-// Global refresh lock to prevent race conditions
+// Global variables for CSRF token management
+let csrfToken: string | null = null;
+let csrfTokenPromise: Promise<string> | null = null;
 let refreshPromise: Promise<any> | null = null;
 
 export const apiClient = axios.create({
@@ -16,6 +18,38 @@ export const apiClient = axios.create({
   // Add timeout configuration (10 seconds)
   timeout: 10000,
 });
+
+// Function to fetch CSRF token from backend
+async function fetchCSRFToken(): Promise<string> {
+  if (csrfToken) {
+    return csrfToken;
+  }
+
+  // Prevent multiple simultaneous requests
+  if (csrfTokenPromise) {
+    return csrfTokenPromise;
+  }
+
+  csrfTokenPromise = (async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/csrf-token`, {
+        withCredentials: true,
+      });
+      csrfToken = response.data.csrfToken;
+      if (!csrfToken) {
+        throw new Error('No CSRF token in response');
+      }
+      return csrfToken;
+    } catch (error) {
+      console.error('Failed to fetch CSRF token:', error);
+      throw error;
+    } finally {
+      csrfTokenPromise = null;
+    }
+  })();
+
+  return await csrfTokenPromise;
+}
 
 // Handle response errors and token refresh
 apiClient.interceptors.response.use(
@@ -66,15 +100,15 @@ apiClient.interceptors.response.use(
 );
 
 // Add CSRF token to requests (for state-changing operations)
-apiClient.interceptors.request.use((config) => {
-  // Get CSRF token from cookie
-  const csrfToken = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('csrf-token='))
-    ?.split('=')[1];
-
-  if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
-    config.headers['x-csrf-token'] = csrfToken;
+apiClient.interceptors.request.use(async (config) => {
+  // For state-changing operations, include CSRF token
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
+    try {
+      const token = await fetchCSRFToken();
+      config.headers['x-csrf-token'] = token;
+    } catch (error) {
+      console.error('Failed to include CSRF token:', error);
+    }
   }
 
   return config;

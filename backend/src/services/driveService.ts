@@ -182,8 +182,38 @@ export class GoogleDriveService {
         });
       });
 
+      // Fetch the content of each trip file
+      const trips: Trip[] = [];
+      
+      if (res.data.files && res.data.files.length > 0) {
+        for (const file of res.data.files) {
+          try {
+            if (!file.id) continue; // Skip files without ID
+            
+            // Fetch the actual trip data from the file
+            const tripContent = await retryWithBackoff(async () => {
+              return await this.drive.files.get({
+                fileId: file.id!,
+                alt: 'media',
+              });
+            });
+            
+            // Add file metadata to the trip data
+            const tripData = tripContent.data as Trip;
+            tripData.fileId = file.id || undefined;
+            if (file.createdTime) tripData.createdTime = file.createdTime;
+            if (file.modifiedTime) tripData.modifiedTime = file.modifiedTime;
+            
+            trips.push(tripData);
+          } catch (err) {
+            logger.warn(`Failed to fetch content for trip file ${file.id}`, err);
+            // Continue with next file instead of failing completely
+          }
+        }
+      }
+
       return {
-        trips: (res.data.files || []) as Trip[],
+        trips,
         nextPageToken: res.data.nextPageToken || undefined,
       };
     } catch (err: any) {

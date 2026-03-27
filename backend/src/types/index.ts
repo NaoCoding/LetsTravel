@@ -23,6 +23,8 @@ export interface Trip {
   bookings: Booking[];
   notes: string;
   fileId?: string; // Google Drive file ID
+  createdTime?: string; // Google Drive creation time
+  modifiedTime?: string; // Google Drive modification time
 }
 
 export interface Flight {
