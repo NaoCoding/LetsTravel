@@ -83,8 +83,8 @@ apiClient.interceptors.request.use((config) => {
 
 export const authAPI = {
   getAuthUrl: () => apiClient.get('/api/v1/auth/google/url'),
-  exchangeCode: (credential: string) =>
-    apiClient.post('/api/v1/auth/google/callback', { credential }),
+  exchangeCode: (code: string) =>
+    apiClient.post('/api/v1/auth/google/callback', { code }),
   refreshToken: () => apiClient.post('/api/v1/auth/refresh', {}),
   logout: () => apiClient.post('/api/v1/auth/logout', {}),
 };
