@@ -3,39 +3,56 @@ import crypto from 'crypto';
 import { API_STATUS_CODE } from '../utils/constants';
 import { AppError } from './errorHandler';
 
-const CSRF_TOKEN_COOKIE = 'csrf-token';
+const CSRF_TOKEN_LENGTH = 32;
 const CSRF_TOKEN_HEADER = 'x-csrf-token';
 
 /**
  * Generate a CSRF token
  */
 export function generateCSRFToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+  return crypto.randomBytes(CSRF_TOKEN_LENGTH).toString('hex');
 }
 
 /**
- * Middleware to provide CSRF token in cookies
+ * Middleware to provide CSRF token in httpOnly cookie
+ * The token value is also stored in res.locals for endpoint that returns it
  */
 export function csrfTokenProvider(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): void {
-  // Generate CSRF token if not already present
-  let csrfToken = _req.cookies[CSRF_TOKEN_COOKIE];
+  // Get existing token from cookie or generate new one
+  let csrfToken = req.cookies['csrf-token'];
   
   if (!csrfToken) {
     csrfToken = generateCSRFToken();
-    res.cookie(CSRF_TOKEN_COOKIE, csrfToken, {
-      httpOnly: false, // Allow JavaScript to read CSRF token
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      path: '/',
-    });
   }
-  
+
+  // Set httpOnly cookie (JavaScript cannot read CSRF token)
+  res.cookie('csrf-token', csrfToken, {
+    httpOnly: true,        // JavaScript cannot access
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',    // Only send same-site requests
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    path: '/',
+  });
+
+  // Store in res.locals for getCsrfToken endpoint
+  res.locals.csrfToken = csrfToken;
+
   next();
+}
+
+/**
+ * GET endpoint to retrieve CSRF token for frontend
+ */
+export function getCsrfToken(
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+): void {
+  res.json({ csrfToken: res.locals.csrfToken });
 }
 
 /**
@@ -56,7 +73,7 @@ export function verifyCSRFToken(
     return next();
   }
 
-  const cookieToken = req.cookies[CSRF_TOKEN_COOKIE];
+  const cookieToken = req.cookies['csrf-token'];
   const headerToken = req.get(CSRF_TOKEN_HEADER);
 
   if (!cookieToken || !headerToken) {

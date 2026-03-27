@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
+import { google } from 'googleapis';
 import { authenticateToken } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { apiLimiter } from '../middleware/rateLimit';
-import driveService from '../services/driveService';
+import { GoogleDriveService } from '../services/driveService';
+import { env } from '../config/env';
 import {
   SaveTripSchema,
   UpdateTripSchema,
@@ -18,6 +20,24 @@ const router = Router();
 // All routes require authentication
 router.use(authenticateToken);
 router.use(apiLimiter);
+
+/**
+ * Helper: Create a GoogleDriveService instance for the current user
+ */
+function createUserDriveService(userAccessToken: string): GoogleDriveService {
+  // Create a new OAuth2Client for this user
+  const oauth2Client = new google.auth.OAuth2(
+    env.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_SECRET,
+    env.GOOGLE_REDIRECT_URI
+  );
+
+  // Set this user's credentials
+  oauth2Client.setCredentials({ access_token: userAccessToken });
+
+  // Return a new service instance for this user
+  return new GoogleDriveService(oauth2Client);
+}
 
 // Save a new trip to Google Drive
 router.post(
@@ -37,8 +57,8 @@ router.post(
 
     const { trip } = validation.data;
 
-    // Set user's Google credentials
-    await driveService.setCredentials({ access_token: req.user.accessToken });
+    // Create service instance for this user
+    const driveService = createUserDriveService(req.user.accessToken);
 
     const fileName = `trip-${trip.id}.json`;
     const fileId = await driveService.saveTrip(trip, fileName);
@@ -58,7 +78,8 @@ router.get(
       );
     }
 
-    await driveService.setCredentials({ access_token: req.user.accessToken });
+    // Create service instance for this user
+    const driveService = createUserDriveService(req.user.accessToken);
 
     const files = await driveService.getTrips();
     res.json({ trips: files });
@@ -85,7 +106,8 @@ router.get(
       );
     }
 
-    await driveService.setCredentials({ access_token: req.user.accessToken });
+    // Create service instance for this user
+    const driveService = createUserDriveService(req.user.accessToken);
 
     const trip = await driveService.getTrip(fileId);
     res.json(trip);
@@ -119,7 +141,8 @@ router.put(
 
     const { trip } = validation.data;
 
-    await driveService.setCredentials({ access_token: req.user.accessToken });
+    // Create service instance for this user
+    const driveService = createUserDriveService(req.user.accessToken);
 
     // Cast to Trip type (after Zod validation, we know the structure is valid)
     await driveService.updateTrip(fileId, trip as Trip);
@@ -147,7 +170,8 @@ router.delete(
       );
     }
 
-    await driveService.setCredentials({ access_token: req.user.accessToken });
+    // Create service instance for this user
+    const driveService = createUserDriveService(req.user.accessToken);
 
     await driveService.deleteTrip(fileId);
     res.json({ message: 'Trip deleted successfully' });

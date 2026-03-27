@@ -7,7 +7,7 @@ import driveRoutes from './routes/drive';
 import bookingRoutes from './routes/bookings';
 import { errorHandler } from './middleware/errorHandler';
 import { generalLimiter } from './middleware/rateLimit';
-import { csrfTokenProvider, verifyCSRFToken } from './middleware/csrf';
+import { csrfTokenProvider, verifyCSRFToken, getCsrfToken } from './middleware/csrf';
 import { requestLoggingMiddleware } from './utils/logger';
 
 // Validate environment variables before starting
@@ -52,6 +52,9 @@ app.use(generalLimiter);
 
 // API versioning
 const apiV1 = express.Router();
+
+// CSRF token endpoint (for frontend to get token)
+apiV1.get('/csrf-token', csrfTokenProvider, getCsrfToken);
 
 // Routes
 apiV1.use('/auth', authRoutes);

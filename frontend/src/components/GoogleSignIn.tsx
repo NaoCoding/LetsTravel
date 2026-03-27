@@ -9,7 +9,7 @@ import { authAPI } from '@/lib/api';
 export const GoogleSignIn = () => {
   const divRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { setUser, setTokens } = useAuthStore();
+  const { setUser } = useAuthStore();
 
   useEffect(() => {
     // Initialize Google Sign-In
@@ -35,10 +35,9 @@ export const GoogleSignIn = () => {
       // Send the token to backend for verification
       const result = await authAPI.exchangeCode(idToken);
 
-      if (result.data.token && result.data.user) {
+      if (result.data.user) {
         // Store user info in store only (httpOnly cookie is set by backend)
         setUser(result.data.user);
-        setTokens(result.data.token, result.data.refreshToken);
 
         toast.success('Welcome! You have been signed in.');
         router.push('/dashboard');

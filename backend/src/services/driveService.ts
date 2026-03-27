@@ -4,12 +4,6 @@ import { AppError } from '../middleware/errorHandler';
 import { API_STATUS_CODE } from '../utils/constants';
 import type { Trip } from '../types';
 
-const oauth2Client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
-
 // Helper for exponential backoff retry
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
@@ -34,11 +28,16 @@ async function retryWithBackoff<T>(
   throw new Error('Max retries exceeded');
 }
 
+/**
+ * GoogleDriveService - Handles Google Drive operations
+ * Each instance has its own OAuth2Client to avoid concurrency issues
+ */
 export class GoogleDriveService {
-  private drive = google.drive({ version: 'v3', auth: oauth2Client });
+  private drive: ReturnType<typeof google.drive>;
 
-  async setCredentials(tokens: any) {
-    oauth2Client.setCredentials(tokens);
+  constructor(private oauth2Client: OAuth2Client) {
+    // Each instance has its own authorized drive client
+    this.drive = google.drive({ version: 'v3', auth: this.oauth2Client });
   }
 
   async saveTrip(tripData: Trip, fileName: string): Promise<string> {
@@ -209,5 +208,3 @@ export class GoogleDriveService {
     }
   }
 }
-
-export default new GoogleDriveService();
