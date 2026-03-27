@@ -5,6 +5,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { env } from '../config/env';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { authLimiter } from '../middleware/rateLimit';
+import { logger } from '../utils/logger';
 import {
   GoogleCallbackSchema,
   RefreshTokenSchema,
@@ -120,8 +121,12 @@ router.post(
       }
     } else if (code) {
       // Handle authorization code - this provides both ID and access tokens
+      // When using popup flow (ux_mode: 'popup'), redirect_uri should be 'postmessage'
       try {
-        const { tokens: codeTokens } = await oauth2Client.getToken(code);
+        const { tokens: codeTokens } = await oauth2Client.getToken({
+          code,
+          redirect_uri: 'postmessage',
+        });
 
         if (!codeTokens.access_token) {
           throw new AppError(
@@ -145,6 +150,7 @@ router.post(
           name: data.name,
         };
       } catch (err) {
+        logger.error('Token exchange error:', err instanceof Error ? err : new Error(String(err)));
         throw new AppError(
           API_STATUS_CODE.INTERNAL_SERVER_ERROR,
           ERROR_MESSAGES.AUTH_FAILED
