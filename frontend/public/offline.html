@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LetsTravel - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .offline-container {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .offline-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #1f2937;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #6b7280;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .offline-tips {
+      background: #f3f4f6;
+      border-left: 4px solid #3b82f6;
+      padding: 15px;
+      margin: 20px 0;
+      text-align: left;
+      border-radius: 4px;
+    }
+
+    .offline-tips h3 {
+      color: #3b82f6;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .offline-tips ul {
+      list-style: none;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .offline-tips li {
+      margin: 5px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .offline-tips li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+    }
+
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Don't worry, your trip data is safely stored in your Google Drive.</p>
+
+    <div class="offline-tips">
+      <h3>While Offline, You Can:</h3>
+      <ul>
+        <li>View your cached trip data</li>
+        <li>Review flight information</li>
+        <li>Check booking details</li>
+        <li>View your notes</li>
+      </ul>
+    </div>
+
+    <p>Once you're back online, you'll be able to sync your data and access all features.</p>
+
+    <button onclick="tryReconnect()">Check Connection</button>
+  </div>
+
+  <script>
+    function tryReconnect() {
+      if (navigator.onLine) {
+        window.location.href = '/';
+      } else {
+        alert('Still offline. Please check your internet connection.');
+      }
+    }
+
+    // Auto-check for connection restoration
+    window.addEventListener('online', function() {
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

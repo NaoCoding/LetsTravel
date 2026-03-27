@@ -1,0 +1,33 @@
+{
+  "name": "letstravel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Travel planning web application with flight tracking and Google Drive integration",
+  "scripts": {
+    "dev": "concurrently \"npm:dev:frontend\" \"npm:dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "start": "npm run start:backend",
+    "start:frontend": "cd frontend && npm start",
+    "start:backend": "cd backend && npm start",
+    "type-check": "npm run type-check:frontend && npm run type-check:backend",
+    "type-check:frontend": "cd frontend && npm run type-check",
+    "type-check:backend": "cd backend && npm run type-check"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "keywords": [
+    "travel",
+    "planning",
+    "flights",
+    "bookings",
+    "trip-planning",
+    "pwa"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

@@ -1,0 +1,10 @@
+.env.local
+node_modules/
+dist/
+build/
+out/
+.next/
+coverage/
+.DS_Store
+*.pem
+doc/
