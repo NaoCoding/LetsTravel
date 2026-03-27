@@ -49,10 +49,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setCurrentLanguage(lang);
   };
 
-  if (!isInitialized) {
-    return <>{children}</>;
-  }
-
   return (
     <I18nContext.Provider value={{ currentLanguage, changeLanguage }}>
       {children}
