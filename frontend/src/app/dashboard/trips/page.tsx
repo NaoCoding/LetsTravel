@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'i18next/react';
 import { driveAPI } from '@/lib/api';
 
 interface Trip {
@@ -17,6 +18,7 @@ interface PaginationInfo {
 }
 
 export default function TripsPage() {
+  const { t } = useTranslation('common');
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pageSize, setPageSize] = useState(10);
@@ -38,7 +40,7 @@ export default function TripsPage() {
       }
     } catch (error: any) {
       console.error('Failed to fetch trips:', error);
-      toast.error('Failed to load trips. Please try again.');
+      toast.error(t('trips.failedToLoadTrips'));
     } finally {
       setIsLoading(false);
     }
@@ -71,12 +73,12 @@ export default function TripsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">My Trips</h1>
+      <h1 className="text-3xl font-bold mb-6">{t('trips.title')}</h1>
       
       {/* Page Size Selector */}
       <div className="mb-6 flex items-center gap-4">
         <label htmlFor="pageSize" className="text-sm font-medium text-gray-700">
-          Trips per page:
+          {t('trips.tripsPerPage')}
         </label>
         <select
           id="pageSize"
@@ -107,17 +109,17 @@ export default function TripsPage() {
         <div className="grid gap-6 mb-6">
           {trips.map((trip) => (
             <div key={trip.id} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-semibold mb-2">{trip.name || 'Untitled Trip'}</h3>
+              <h3 className="text-xl font-semibold mb-2">{trip.name || t('trips.untitledTrip')}</h3>
               <div className="text-sm text-gray-600 space-y-1">
-                <p>Created: {formatDate(trip.createdTime)}</p>
-                <p>Modified: {formatDate(trip.modifiedTime)}</p>
+                <p>{t('trips.created')} {formatDate(trip.createdTime)}</p>
+                <p>{t('trips.modified')} {formatDate(trip.modifiedTime)}</p>
               </div>
               <div className="mt-4 flex gap-2">
                 <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                  View
+                  {t('trips.view')}
                 </button>
                 <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">
-                  Edit
+                  {t('trips.edit')}
                 </button>
               </div>
             </div>
@@ -128,7 +130,7 @@ export default function TripsPage() {
       {/* No Trips State */}
       {!isLoading && trips.length === 0 && (
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <p className="text-gray-600">No trips yet. Create your first trip!</p>
+          <p className="text-gray-600">{t('trips.noTrips')}</p>
         </div>
       )}
 
@@ -140,11 +142,11 @@ export default function TripsPage() {
             disabled={previousPageTokens.length === 0}
             className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            Previous
+            {t('trips.previous')}
           </button>
           
           <span className="text-sm text-gray-600">
-            Showing {trips.length} trip{trips.length !== 1 ? 's' : ''}
+            {t('trips.showing', { count: trips.length })}
           </span>
           
           <button
@@ -152,7 +154,7 @@ export default function TripsPage() {
             disabled={!nextPageToken}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            Next
+            {t('trips.next')}
           </button>
         </div>
       )}

@@ -4,12 +4,15 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plane } from 'lucide-react';
+import { useTranslation } from 'i18next/react';
 import { GoogleSignIn } from '@/components/GoogleSignIn';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuthStore } from '@/store/auth';
 
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  const { t } = useTranslation('common');
 
   useEffect(() => {
     // Redirect if already authenticated
@@ -25,14 +28,15 @@ export default function LoginPage() {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Plane className="w-8 h-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">LetsTravel</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('common.appName')}</h1>
           </Link>
-          <div>
+          <div className="space-x-4 flex items-center">
+            <LanguageSwitcher />
             <Link
               href="/"
               className="px-6 py-2 text-gray-700 hover:text-gray-900 font-medium"
             >
-              Back to Home
+              {t('common.backToHome')}
             </Link>
           </div>
         </nav>
@@ -43,9 +47,9 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign In</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('login.title')}</h2>
               <p className="text-gray-600">
-                Sign in with your Google account to get started
+                {t('login.subtitle')}
               </p>
             </div>
 
@@ -59,7 +63,7 @@ export default function LoginPage() {
                   <div className="w-full border-t border-gray-300"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or continue without signing in</span>
+                  <span className="px-2 bg-white text-gray-500">{t('common.browseAsGuest')}</span>
                 </div>
               </div>
 
@@ -67,18 +71,18 @@ export default function LoginPage() {
                 href="/dashboard"
                 className="w-full block px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-700 text-center transition-colors"
               >
-                Browse as Guest
+                {t('common.browseAsGuest')}
               </Link>
             </div>
 
             <p className="mt-8 text-center text-sm text-gray-600">
-              By signing in, you agree to our{' '}
+              {t('common.bySigningIn')}{' '}
               <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
-                Terms of Service
+                {t('common.termsOfService')}
               </a>{' '}
-              and{' '}
+              {t('common.and')}{' '}
               <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
-                Privacy Policy
+                {t('common.privacyPolicy')}
               </a>
             </p>
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'i18next/react';
 import { useAuthStore } from '@/store/auth';
 import { authAPI } from '@/lib/api';
 
@@ -10,6 +11,7 @@ export const GoogleSignIn = () => {
   const divRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { setUser } = useAuthStore();
+  const { t } = useTranslation('common');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleSDKReady, setIsGoogleSDKReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export const GoogleSignIn = () => {
           
           setIsGoogleSDKReady(true);
         } catch (err) {
-          setSdkError('Failed to initialize Google Sign-In');
+          setSdkError(t('errors.failedToInitializeGoogle'));
           console.error('Google SDK initialization error:', err);
         }
       } else if (!window.google) {
@@ -44,14 +46,14 @@ export const GoogleSignIn = () => {
     // Set a timeout for SDK loading failure
     const sdkLoadTimeout = setTimeout(() => {
       if (!isGoogleSDKReady && !window.google) {
-        setSdkError('Google Sign-In service failed to load. Please refresh the page.');
+        setSdkError(t('errors.googleSignInFailed'));
       }
     }, 5000);
 
     checkGoogleSDK();
 
     return () => clearTimeout(sdkLoadTimeout);
-  }, []);
+  }, [t]);
 
   const handleCredentialResponse = async (response: CredentialResponse) => {
     try {
@@ -66,13 +68,13 @@ export const GoogleSignIn = () => {
         // Store user info in store only (httpOnly cookie is set by backend)
         setUser(result.data.user);
 
-        toast.success('Welcome! You have been signed in.');
+        toast.success(t('login.welcomeMessage'));
         router.push('/dashboard');
       }
     } catch (error: any) {
       console.error('Sign-in error:', error);
       const errorMessage =
-        error.response?.data?.error || 'Failed to sign in. Please try again.';
+        error.response?.data?.error || t('login.googleSignInFailed');
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -85,7 +87,7 @@ export const GoogleSignIn = () => {
       <div className="flex justify-center my-6">
         <div className="flex items-center gap-2">
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-          <span className="text-gray-600">Signing in...</span>
+          <span className="text-gray-600">{t('login.signingIn')}</span>
         </div>
       </div>
     );
