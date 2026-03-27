@@ -36,10 +36,66 @@ async function retryWithBackoff<T>(
  */
 export class GoogleDriveService {
   private drive: ReturnType<typeof google.drive>;
+  private tripsFolderIdCache: string | null = null;
 
   constructor(private oauth2Client: OAuth2Client) {
     // Each instance has its own authorized drive client
     this.drive = google.drive({ version: 'v3', auth: this.oauth2Client });
+  }
+
+  /**
+   * Get or create the "LetsTravel Trips" folder in user's Google Drive
+   */
+  private async getOrCreateTripsFolder(): Promise<string> {
+    // Return cached folder ID if available
+    if (this.tripsFolderIdCache) {
+      return this.tripsFolderIdCache;
+    }
+
+    try {
+      // Search for existing "LetsTravel Trips" folder
+      const searchRes = await retryWithBackoff(async () => {
+        return await this.drive.files.list({
+          q: "name='LetsTravel Trips' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+          spaces: 'drive',
+          fields: 'files(id)',
+          pageSize: 1,
+        });
+      });
+
+      if (searchRes.data.files && searchRes.data.files.length > 0) {
+        const folderId = searchRes.data.files[0].id!;
+        this.tripsFolderIdCache = folderId;
+        return folderId;
+      }
+
+      // Folder doesn't exist, create it
+      const createRes = await retryWithBackoff(async () => {
+        return await this.drive.files.create({
+          requestBody: {
+            name: 'LetsTravel Trips',
+            mimeType: 'application/vnd.google-apps.folder',
+          },
+          fields: 'id',
+        });
+      });
+
+      if (!createRes.data.id) {
+        throw new AppError(
+          API_STATUS_CODE.INTERNAL_SERVER_ERROR,
+          'Failed to create LetsTravel Trips folder'
+        );
+      }
+
+      this.tripsFolderIdCache = createRes.data.id;
+      return createRes.data.id;
+    } catch (err: any) {
+      logger.error('Error getting or creating trips folder', err);
+      throw new AppError(
+        API_STATUS_CODE.INTERNAL_SERVER_ERROR,
+        'Failed to access LetsTravel Trips folder'
+      );
+    }
   }
 
   async saveTrip(tripData: Trip, fileName: string): Promise<string> {
@@ -56,10 +112,13 @@ export class GoogleDriveService {
         );
       }
 
+      // Get or create the LetsTravel Trips folder
+      const folderId = await this.getOrCreateTripsFolder();
+
       const fileMetadata = {
         name: fileName,
         mimeType: 'application/json',
-        parents: ['appDataFolder'],
+        parents: [folderId],
       };
 
       const media = {
@@ -106,9 +165,12 @@ export class GoogleDriveService {
 
   async getTrips(
     pageSize: number = 10,
-    pageToken?: string
-  ): Promise<{ trips: Trip[]; nextPageToken?: string | null }> {
-    try {
+    pa// Get the LetsTravel Trips folder
+      const folderId = await this.getOrCreateTripsFolder();
+
+      const res = await retryWithBackoff(async () => {
+        return await this.drive.files.list({
+          q: `'${folderId}' in parents and trashed=false`
       const res = await retryWithBackoff(async () => {
         return await this.drive.files.list({
           spaces: 'appDataFolder',

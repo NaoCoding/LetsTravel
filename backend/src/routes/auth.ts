@@ -56,6 +56,7 @@ router.get('/google/url', (_req: Request, res: Response) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: [...GOOGLE_OAUTH_SCOPES],
+    prompt: 'consent', // Force consent screen to ensure offline access
   });
 
   res.json({ url: authUrl });
@@ -85,9 +86,12 @@ router.post(
     
     let userInfo: UserInfo;
     let accessToken: string | undefined;
+    let refreshTokenValue: string | undefined;
 
     if (credential) {
       // Handle Google Sign-In ID token verification
+      // Note: ID token alone doesn't provide Google Drive access
+      // This is for authentication only, not authorization for Drive API
       const client = new OAuth2Client(env.GOOGLE_CLIENT_ID);
       try {
         const ticket = await client.verifyIdToken({
@@ -112,10 +116,7 @@ router.post(
         throw new AppError(
           API_STATUS_CODE.BAD_REQUEST,
           ERROR_MESSAGES.INVALID_GOOGLE_TOKEN
-        );
-      }
-    } else if (code) {
-      // Handle authorization code flow
+        ); - this provides both ID and access tokens
       try {
         const { tokens: codeTokens } = await oauth2Client.getToken(code);
 
@@ -128,6 +129,7 @@ router.post(
 
         oauth2Client.setCredentials(codeTokens);
         accessToken = codeTokens.access_token;
+        refreshTokenValue = codeTokens.refresh_token;
 
         // Get user info
         const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
@@ -167,6 +169,10 @@ router.post(
 
     // Create refresh token with separate secret
     const refreshToken = jwt.sign(
+      {
+        id: userInfo.id,
+        email: userInfo.email,
+        googleRefreshToken: refreshTokenValue || undefinedsign(
       {
         id: userInfo.id,
         email: userInfo.email,
