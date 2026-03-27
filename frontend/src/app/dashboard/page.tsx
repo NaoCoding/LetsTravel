@@ -6,9 +6,9 @@ export default function DashboardPage() {
   const { t } = useTranslation('common');
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">{t('dashboard.welcome')}</h1>
-      <p className="text-gray-600">{t('dashboard.comingSoon')}</p>
+    <div className="w-full">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">{t('dashboard.welcome')}</h1>
+      <p className="text-sm sm:text-base text-gray-600">{t('dashboard.comingSoon')}</p>
     </div>
   );
 }

@@ -72,11 +72,11 @@ export default function TripsPage() {
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">{t('trips.title')}</h1>
+    <div className="w-full">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">{t('trips.title')}</h1>
       
       {/* Page Size Selector */}
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
         <label htmlFor="pageSize" className="text-sm font-medium text-gray-700">
           {t('trips.tripsPerPage')}
         </label>
@@ -106,15 +106,15 @@ export default function TripsPage() {
 
       {/* Trips Grid */}
       {!isLoading && trips.length > 0 && (
-        <div className="grid gap-6 mb-6">
+        <div className="grid gap-4 sm:gap-6 mb-6">
           {trips.map((trip) => (
-            <div key={trip.id} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-semibold mb-2">{trip.name || t('trips.untitledTrip')}</h3>
-              <div className="text-sm text-gray-600 space-y-1">
+            <div key={trip.id} className="bg-white p-4 sm:p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+              <h3 className="text-lg sm:text-xl font-semibold mb-2">{trip.name || t('trips.untitledTrip')}</h3>
+              <div className="text-xs sm:text-sm text-gray-600 space-y-1 mb-4">
                 <p>{t('trips.created')} {formatDate(trip.createdTime)}</p>
                 <p>{t('trips.modified')} {formatDate(trip.modifiedTime)}</p>
               </div>
-              <div className="mt-4 flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
                   {t('trips.view')}
                 </button>
@@ -129,30 +129,30 @@ export default function TripsPage() {
 
       {/* No Trips State */}
       {!isLoading && trips.length === 0 && (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <p className="text-gray-600">{t('trips.noTrips')}</p>
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <p className="text-sm sm:text-base text-gray-600">{t('trips.noTrips')}</p>
         </div>
       )}
 
       {/* Pagination Controls */}
       {!isLoading && trips.length > 0 && (
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0 mt-6">
           <button
             onClick={handlePreviousPage}
             disabled={previousPageTokens.length === 0}
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
           >
             {t('trips.previous')}
           </button>
           
-          <span className="text-sm text-gray-600">
+          <span className="text-xs sm:text-sm text-gray-600">
             {t('trips.showing', { count: trips.length })}
           </span>
           
           <button
             onClick={handleNextPage}
             disabled={!nextPageToken}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
           >
             {t('trips.next')}
           </button>

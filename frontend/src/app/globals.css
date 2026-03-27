@@ -6,6 +6,10 @@
   @apply box-border;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   @apply antialiased;
 }
@@ -17,3 +21,45 @@ a {
 button {
   @apply transition-all duration-200;
 }
+
+/* Mobile-first improvements */
+@media (max-width: 640px) {
+  body {
+    @apply text-sm;
+  }
+
+  h1 {
+    @apply text-xl;
+  }
+
+  h2 {
+    @apply text-lg;
+  }
+
+  h3 {
+    @apply text-base;
+  }
+}
+
+/* Ensure touch targets are at least 44px for mobile */
+@media (max-width: 768px) {
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    @apply min-h-[44px];
+  }
+}
+
+/* Improve scrolling performance */
+@supports (scroll-behavior: smooth) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Fix layout shifts on scrollbar appearance */
+html {
+  overflow-y: scroll;
+}
+
