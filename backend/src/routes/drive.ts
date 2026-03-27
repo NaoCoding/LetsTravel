@@ -1,107 +1,155 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
+import { asyncHandler, AppError } from '../middleware/errorHandler';
+import { apiLimiter } from '../middleware/rateLimit';
 import driveService from '../services/driveService';
+import {
+  SaveTripSchema,
+  UpdateTripSchema,
+} from '../utils/validation';
+import {
+  ERROR_MESSAGES,
+  API_STATUS_CODE,
+} from '../utils/constants';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticateToken);
+router.use(apiLimiter);
 
 // Save a new trip to Google Drive
-router.post('/trips', async (req: Request, res: Response) => {
-  try {
-    const { trip } = req.body;
+router.post(
+  '/trips',
+  asyncHandler(async (req: Request, res: Response) => {
+    const validation = SaveTripSchema.safeParse(req.body);
+    if (!validation.success) {
+      throw new AppError(API_STATUS_CODE.BAD_REQUEST, 'Invalid trip data');
+    }
 
     if (!req.user?.accessToken) {
-      res.status(401).json({ error: 'No access token' });
-    } else {
-      // Set user's Google credentials
-      await driveService.setCredentials({ access_token: req.user.accessToken });
-
-      const fileName = `trip-${trip.id}.json`;
-      const fileId = await driveService.saveTrip(trip, fileName);
-
-      res.json({ fileId, trip });
+      throw new AppError(
+        API_STATUS_CODE.UNAUTHORIZED,
+        ERROR_MESSAGES.NO_ACCESS_TOKEN
+      );
     }
-  } catch (err) {
-    console.error('Error saving trip:', err);
-    res.status(500).json({ error: 'Failed to save trip' });
-  }
-});
+
+    const { trip } = validation.data;
+
+    // Set user's Google credentials
+    await driveService.setCredentials({ access_token: req.user.accessToken });
+
+    const fileName = `trip-${trip.id}.json`;
+    const fileId = await driveService.saveTrip(trip, fileName);
+
+    res.status(API_STATUS_CODE.CREATED).json({ fileId, trip });
+  })
+);
 
 // Get all trips from Google Drive
-router.get('/trips', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/trips',
+  asyncHandler(async (req: Request, res: Response) => {
     if (!req.user?.accessToken) {
-      res.status(401).json({ error: 'No access token' });
-    } else {
-      await driveService.setCredentials({ access_token: req.user.accessToken });
-
-      const files = await driveService.getTrips();
-      res.json({ trips: files });
+      throw new AppError(
+        API_STATUS_CODE.UNAUTHORIZED,
+        ERROR_MESSAGES.NO_ACCESS_TOKEN
+      );
     }
-  } catch (err) {
-    console.error('Error fetching trips:', err);
-    res.status(500).json({ error: 'Failed to fetch trips' });
-  }
-});
+
+    await driveService.setCredentials({ access_token: req.user.accessToken });
+
+    const files = await driveService.getTrips();
+    res.json({ trips: files });
+  })
+);
 
 // Get a specific trip
-router.get('/trips/:fileId', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/trips/:fileId',
+  asyncHandler(async (req: Request, res: Response) => {
     const { fileId } = req.params;
 
-    if (!req.user?.accessToken) {
-      res.status(401).json({ error: 'No access token' });
-    } else {
-      await driveService.setCredentials({ access_token: req.user.accessToken });
-
-      const trip = await driveService.getTrip(fileId);
-      res.json(trip);
+    if (!fileId || typeof fileId !== 'string') {
+      throw new AppError(
+        API_STATUS_CODE.BAD_REQUEST,
+        'Invalid file ID'
+      );
     }
-  } catch (err) {
-    console.error('Error fetching trip:', err);
-    res.status(500).json({ error: 'Failed to fetch trip' });
-  }
-});
+
+    if (!req.user?.accessToken) {
+      throw new AppError(
+        API_STATUS_CODE.UNAUTHORIZED,
+        ERROR_MESSAGES.NO_ACCESS_TOKEN
+      );
+    }
+
+    await driveService.setCredentials({ access_token: req.user.accessToken });
+
+    const trip = await driveService.getTrip(fileId);
+    res.json(trip);
+  })
+);
 
 // Update a trip
-router.put('/trips/:fileId', async (req: Request, res: Response) => {
-  try {
+router.put(
+  '/trips/:fileId',
+  asyncHandler(async (req: Request, res: Response) => {
     const { fileId } = req.params;
-    const { trip } = req.body;
+
+    if (!fileId || typeof fileId !== 'string') {
+      throw new AppError(
+        API_STATUS_CODE.BAD_REQUEST,
+        'Invalid file ID'
+      );
+    }
+
+    const validation = UpdateTripSchema.safeParse(req.body);
+    if (!validation.success) {
+      throw new AppError(API_STATUS_CODE.BAD_REQUEST, 'Invalid trip data');
+    }
 
     if (!req.user?.accessToken) {
-      res.status(401).json({ error: 'No access token' });
-    } else {
-      await driveService.setCredentials({ access_token: req.user.accessToken });
-
-      await driveService.updateTrip(fileId, trip);
-      res.json({ fileId, trip });
+      throw new AppError(
+        API_STATUS_CODE.UNAUTHORIZED,
+        ERROR_MESSAGES.NO_ACCESS_TOKEN
+      );
     }
-  } catch (err) {
-    console.error('Error updating trip:', err);
-    res.status(500).json({ error: 'Failed to update trip' });
-  }
-});
+
+    const { trip } = validation.data;
+
+    await driveService.setCredentials({ access_token: req.user.accessToken });
+
+    await driveService.updateTrip(fileId, trip);
+    res.json({ fileId, trip });
+  })
+);
 
 // Delete a trip
-router.delete('/trips/:fileId', async (req: Request, res: Response) => {
-  try {
+router.delete(
+  '/trips/:fileId',
+  asyncHandler(async (req: Request, res: Response) => {
     const { fileId } = req.params;
 
-    if (!req.user?.accessToken) {
-      res.status(401).json({ error: 'No access token' });
-    } else {
-      await driveService.setCredentials({ access_token: req.user.accessToken });
-
-      await driveService.deleteTrip(fileId);
-      res.json({ message: 'Trip deleted successfully' });
+    if (!fileId || typeof fileId !== 'string') {
+      throw new AppError(
+        API_STATUS_CODE.BAD_REQUEST,
+        'Invalid file ID'
+      );
     }
-  } catch (err) {
-    console.error('Error deleting trip:', err);
-    res.status(500).json({ error: 'Failed to delete trip' });
-  }
-});
+
+    if (!req.user?.accessToken) {
+      throw new AppError(
+        API_STATUS_CODE.UNAUTHORIZED,
+        ERROR_MESSAGES.NO_ACCESS_TOKEN
+      );
+    }
+
+    await driveService.setCredentials({ access_token: req.user.accessToken });
+
+    await driveService.deleteTrip(fileId);
+    res.json({ message: 'Trip deleted successfully' });
+  })
+);
 
 export default router;

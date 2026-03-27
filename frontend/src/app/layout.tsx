@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { RootLayoutClient } from '@/components/RootLayoutClient';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -26,9 +27,12 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.svg" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+        <script async src="https://accounts.google.com/gsi/client"></script>
       </head>
       <body className="bg-gray-50 text-gray-900">
-        {children}
+        <RootLayoutClient>
+          {children}
+        </RootLayoutClient>
       </body>
     </html>
   );

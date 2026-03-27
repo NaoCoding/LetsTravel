@@ -1,77 +1,244 @@
 import { Router, Request, Response } from 'express';
 import { google } from 'googleapis';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+import { env } from '../config/env';
+import { asyncHandler, AppError } from '../middleware/errorHandler';
+import { authLimiter } from '../middleware/rateLimit';
+import {
+  GoogleCallbackSchema,
+  RefreshTokenSchema,
+} from '../utils/validation';
+import {
+  ERROR_MESSAGES,
+  API_STATUS_CODE,
+  GOOGLE_OAUTH_SCOPES,
+  COOKIE_NAMES,
+} from '../utils/constants';
 
 const router = Router();
 
 const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  env.GOOGLE_CLIENT_ID,
+  env.GOOGLE_CLIENT_SECRET,
+  env.GOOGLE_REDIRECT_URI
 );
+
+// Helper function to set secure cookies
+const setAuthCookies = (
+  res: Response,
+  accessToken: string,
+  refreshToken?: string
+) => {
+  const isProduction = env.NODE_ENV === 'production';
+
+  res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/',
+  });
+
+  if (refreshToken) {
+    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: '/',
+    });
+  }
+};
 
 // Get Google OAuth URL
 router.get('/google/url', (_req: Request, res: Response) => {
-  const scopes = [
-    'https://www.googleapis.com/auth/drive.appdata',
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
-  ];
-
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: scopes,
+    scope: [...GOOGLE_OAUTH_SCOPES],
   });
 
   res.json({ url: authUrl });
 });
 
-// Handle Google OAuth callback
-router.post('/google/callback', async (req: Request, res: Response) => {
-  try {
-    const { code } = req.body;
+// Handle Google OAuth callback with authorization code or verify ID token
+router.post(
+  '/google/callback',
+  authLimiter,
+  asyncHandler(async (req: Request, res: Response) => {
+    // Validate input
+    const validation = GoogleCallbackSchema.safeParse(req.body);
+    if (!validation.success) {
+      throw new AppError(
+        API_STATUS_CODE.BAD_REQUEST,
+        'Invalid request data'
+      );
+    }
 
-    const { tokens } = await oauth2Client.getToken(code);
+    const { code, credential } = validation.data;
+    let userInfo: any;
+    let tokens: any;
+    let accessToken: string | undefined;
 
-    if (!tokens.access_token) {
-      res.status(400).json({ error: 'Failed to obtain access token' });
+    if (credential) {
+      // Handle Google Sign-In ID token verification
+      const client = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+      try {
+        const ticket = await client.verifyIdToken({
+          idToken: credential,
+          audience: env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        if (!payload) {
+          throw new AppError(
+            API_STATUS_CODE.BAD_REQUEST,
+            ERROR_MESSAGES.INVALID_GOOGLE_TOKEN
+          );
+        }
+
+        userInfo = {
+          data: {
+            id: payload.sub,
+            email: payload.email,
+            name: payload.name,
+          },
+        };
+      } catch (err) {
+        throw new AppError(
+          API_STATUS_CODE.BAD_REQUEST,
+          ERROR_MESSAGES.INVALID_GOOGLE_TOKEN
+        );
+      }
+    } else if (code) {
+      // Handle authorization code flow
+      try {
+        const { tokens: codeTokens } = await oauth2Client.getToken(code);
+
+        if (!codeTokens.access_token) {
+          throw new AppError(
+            API_STATUS_CODE.BAD_REQUEST,
+            'Failed to obtain access token'
+          );
+        }
+
+        oauth2Client.setCredentials(codeTokens);
+        tokens = codeTokens;
+        accessToken = codeTokens.access_token;
+
+        // Get user info
+        const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+        userInfo = await oauth2.userinfo.get();
+      } catch (err) {
+        throw new AppError(
+          API_STATUS_CODE.INTERNAL_SERVER_ERROR,
+          ERROR_MESSAGES.AUTH_FAILED
+        );
+      }
     } else {
-      oauth2Client.setCredentials(tokens);
+      throw new AppError(
+        API_STATUS_CODE.BAD_REQUEST,
+        ERROR_MESSAGES.MISSING_PARAMS
+      );
+    }
 
-      // Get user info
-      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-      const userInfo = await oauth2.userinfo.get();
+    // Create JWT tokens
+    const jwtToken = jwt.sign(
+      {
+        id: userInfo.data.id,
+        email: userInfo.data.email,
+        accessToken: accessToken || undefined,
+      },
+      env.JWT_SECRET,
+      {
+        expiresIn: env.JWT_EXPIRES_IN as string | number,
+      } as any
+    );
 
-      // Create JWT token
-      const jwtToken = jwt.sign(
+    // Create refresh token if available (and set REFRESH_TOKEN_SECRET)
+    let refreshToken: string | undefined;
+    if (env.REFRESH_TOKEN_SECRET) {
+      refreshToken = jwt.sign(
         {
           id: userInfo.data.id,
           email: userInfo.data.email,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
         },
-        process.env.JWT_SECRET || 'your_secret_key',
-        { expiresIn: '7d' }
+        env.REFRESH_TOKEN_SECRET,
+        { expiresIn: '30d' }
+      );
+    }
+
+    // Set secure httpOnly cookies
+    setAuthCookies(res, jwtToken, refreshToken);
+
+    res.json({
+      token: jwtToken,
+      user: {
+        id: userInfo.data.id,
+        email: userInfo.data.email,
+        name: userInfo.data.name,
+      },
+      refreshToken: refreshToken || tokens?.refresh_token || undefined,
+    });
+  })
+);
+
+// Refresh access token
+router.post(
+  '/refresh',
+  asyncHandler(async (req: Request, res: Response) => {
+    // Get refresh token from cookie or body
+    let refreshTokenValue = req.cookies[COOKIE_NAMES.REFRESH_TOKEN];
+
+    if (!refreshTokenValue) {
+      const validation = RefreshTokenSchema.safeParse(req.body);
+      if (!validation.success) {
+        throw new AppError(
+          API_STATUS_CODE.BAD_REQUEST,
+          'Refresh token is required'
+        );
+      }
+      refreshTokenValue = validation.data.refreshToken;
+    }
+
+    try {
+      const secret = env.REFRESH_TOKEN_SECRET || env.JWT_SECRET;
+      const decoded = jwt.verify(refreshTokenValue, secret) as any;
+
+      // Create new JWT token
+      const newJwtToken = jwt.sign(
+        {
+          id: decoded.id,
+          email: decoded.email,
+        },
+        env.JWT_SECRET,
+        {
+          expiresIn: env.JWT_EXPIRES_IN as string | number,
+        } as any
       );
 
+      setAuthCookies(res, newJwtToken, refreshTokenValue);
+
       res.json({
-        token: jwtToken,
+        token: newJwtToken,
         user: {
-          id: userInfo.data.id,
-          email: userInfo.data.email,
-          name: userInfo.data.name,
+          id: decoded.id,
+          email: decoded.email,
         },
-        refreshToken: tokens.refresh_token,
       });
+    } catch (err) {
+      throw new AppError(
+        API_STATUS_CODE.UNAUTHORIZED,
+        'Invalid or expired refresh token'
+      );
     }
-  } catch (err) {
-    console.error('Auth error:', err);
-    res.status(500).json({ error: 'Authentication failed' });
-  }
-});
+  })
+);
 
 // Logout
 router.post('/logout', (_req: Request, res: Response) => {
+  res.clearCookie(COOKIE_NAMES.ACCESS_TOKEN, { path: '/' });
+  res.clearCookie(COOKIE_NAMES.REFRESH_TOKEN, { path: '/' });
   res.json({ message: 'Logged out successfully' });
 });
 

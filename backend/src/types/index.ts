@@ -1,3 +1,8 @@
+import {
+  type FlightStatus,
+  type BookingType,
+} from '../utils/constants';
+
 export interface User {
   id: string;
   email: string;
@@ -28,12 +33,12 @@ export interface Flight {
   arrival: Date;
   from: string;
   to: string;
-  status: 'scheduled' | 'boarding' | 'departed' | 'arrived' | 'cancelled';
+  status: FlightStatus;
 }
 
 export interface Booking {
   id: string;
-  type: 'hotel' | 'airbnb' | 'activity' | 'transport' | 'other';
+  type: BookingType;
   name: string;
   date: Date;
   confirmationNumber?: string;
